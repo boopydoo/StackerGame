@@ -1,6 +1,7 @@
 ﻿using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
+using UnityEngine.UI;
 
 namespace Stacker
 {
@@ -8,6 +9,8 @@ namespace Stacker
     {
         [SerializeField]
         GameObject[] mainStack;
+        [SerializeField]
+        Text scoreText;
 
         const float START_BOUND_SIZE = 8.0f;
         const float ERROR_MARGIN = 0.2f;
@@ -27,7 +30,7 @@ namespace Stacker
         int activeIndex;
 
         [SerializeField]
-        float blockSpeed = 2;
+        float blockSpeed = 1.5f;
         [SerializeField]
         float blockMove = 1.5f;
         [SerializeField]
@@ -86,7 +89,7 @@ namespace Stacker
                 }
             }
             MoveBlock();
-
+            scoreText.text = scoreCount.ToString();
             //Move stack down
             transform.position = Vector3.Lerp(transform.position, newStackPos, stackSpeed * Time.deltaTime);
         }
@@ -105,41 +108,92 @@ namespace Stacker
             // mainStack[activeIndex].transform.localPosition = new Vector3(9, scoreCount, 0);
         }
 
+        void SpawnRubble(Vector3 pos, Vector3 scale)
+        {
+            GameObject rubble = GameObject.CreatePrimitive(PrimitiveType.Cube);
+            rubble.transform.localPosition = pos;
+            rubble.transform.localScale = scale;
+            rubble.AddComponent<Rigidbody>();
+        }
+
         bool PlaceBlock()
         {
             Transform activeTransform = mainStack[activeIndex].transform;
 
             if (isMovingOnX)
             {
-                //TODO
-                //make sliced block outbound
                 float deltaX = activeTransform.localPosition.x - lastBlockPos.x;
-                stackBound = new Vector2(stackBound.x - Mathf.Abs(deltaX), stackBound.y);
 
-                if (stackBound.x <= 0)
+                if (Mathf.Abs(deltaX) <= ERROR_MARGIN)
                 {
-                    return false;
+                    combo++;
+                    activeTransform.localPosition = new Vector3(lastBlockPos.x, scoreCount, lastBlockPos.z);
                 }
+                else
+                {
+                    combo = 0;
+                    stackBound = new Vector2(stackBound.x - Mathf.Abs(deltaX), stackBound.y);
 
-                activeTransform.localScale = new Vector3(stackBound.x, 1, stackBound.y);
+                    if (stackBound.x <= 0)
+                    {
+                        return false;
+                    }
 
-                float offSetPos = deltaX / 2;
-                activeTransform.localPosition -= new Vector3(offSetPos, 0, 0);
+                    Vector3 rubbleScale = new Vector3(Mathf.Abs(deltaX), 1, stackBound.y);
+
+                    activeTransform.localScale = new Vector3(stackBound.x, 1, stackBound.y);
+                    //TODO
+                    //FIX rubblePos
+                    //idk what's wrong with that^
+                    //will have to do more testing shit
+                    Vector3 rubblePos = new Vector3((activeTransform.position.x > 0)
+                        ? activeTransform.position.x + (activeTransform.localScale.x / 2)
+                        : activeTransform.position.x - (activeTransform.localScale.x / 2)
+                        , -0.6f
+                        , activeTransform.position.z);
+
+                    float offSetPos = deltaX / 2;
+                    activeTransform.localPosition -= new Vector3(offSetPos, 0, 0);
+
+                    SpawnRubble(rubblePos, rubbleScale);
+                }
             }
             else
             {
                 float deltaZ = activeTransform.localPosition.z - lastBlockPos.z;
-                stackBound = new Vector2(stackBound.x, stackBound.y - Mathf.Abs(deltaZ));
 
-                if (stackBound.y <= 0)
+                if (Mathf.Abs(deltaZ) <= ERROR_MARGIN)
                 {
-                    return false;
+                    combo++;
+                    activeTransform.localPosition = new Vector3(lastBlockPos.x, scoreCount, lastBlockPos.z);
                 }
+                else
+                {
+                    combo = 0;
+                    stackBound = new Vector2(stackBound.x, stackBound.y - Mathf.Abs(deltaZ));
 
-                activeTransform.localScale = new Vector3(stackBound.x, 1, stackBound.y);
+                    if (stackBound.y <= 0)
+                    {
+                        return false;
+                    }
+                    //TODO
+                    //FIX SpawnRubble for Z
+                    //FIX rubblePos
+                    Vector3 rubbleScale = new Vector3(stackBound.x, 1, Mathf.Abs(deltaZ));
 
-                float offSetPos = deltaZ / 2;
-                activeTransform.localPosition -= new Vector3(0, 0, offSetPos);
+                    activeTransform.localScale = new Vector3(stackBound.x, 1, stackBound.y);
+
+                    Vector3 rubblePos = new Vector3((activeTransform.position.z > 0)
+                        ? activeTransform.position.z + (activeTransform.localScale.y / 2)
+                        : activeTransform.position.z - (activeTransform.localScale.y / 2)
+                        , -0.6f
+                        , activeTransform.position.z);
+
+                    float offSetPos = deltaZ / 2;
+                    activeTransform.localPosition -= new Vector3(0, 0, offSetPos);
+
+                    SpawnRubble(rubblePos, rubbleScale);
+                }
             }
 
             lastBlockPosXZ = (isMovingOnX) ? activeTransform.localPosition.x : activeTransform.localPosition.z;
